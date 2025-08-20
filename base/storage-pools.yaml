@@ -1,0 +1,92 @@
+# Ceph Storage Pools for OpenShift Container Storage
+# These define the underlying storage pools that StorageClasses reference
+
+---
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: ocs-storagecluster-cephblockpool
+  namespace: openshift-storage
+  annotations:
+    description: "Primary Ceph block storage pool for RBD volumes"
+    pool.type: "replicated"
+    managed-by: "gitops"
+spec:
+  failureDomain: host
+  replicated:
+    size: 3
+    requireSafeReplicaSize: true
+  parameters:
+    compression_mode: none
+  mirroring:
+    enabled: false
+
+---
+apiVersion: ceph.rook.io/v1
+kind: CephFilesystem
+metadata:
+  name: ocs-storagecluster-cephfilesystem
+  namespace: openshift-storage
+  annotations:
+    description: "CephFS filesystem for shared storage"
+    filesystem.type: "cephfs"
+    managed-by: "gitops"
+spec:
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+  dataPools:
+    - name: ocs-storagecluster-cephfilesystem-data0
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+      parameters:
+        compression_mode: none
+  preserveFilesystemOnDelete: true
+  metadataServer:
+    activeCount: 1
+    activeStandby: true
+    placement:
+      tolerations:
+        - effect: NoSchedule
+          key: node.ocs.openshift.io/storage
+          operator: Equal
+          value: "true"
+
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStore
+metadata:
+  name: ocs-storagecluster-cephobjectstore
+  namespace: openshift-storage
+  annotations:
+    description: "Ceph Object Gateway for S3-compatible storage"
+    objectstore.type: "rgw"
+    managed-by: "gitops"
+spec:
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+    parameters:
+      compression_mode: none
+  preservePoolsOnDelete: false
+  gateway:
+    port: 80
+    securePort: 443
+    instances: 1
+    placement:
+      tolerations:
+        - effect: NoSchedule
+          key: node.ocs.openshift.io/storage
+          operator: Equal
+          value: "true"

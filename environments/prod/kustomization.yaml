@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: storage-prod
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: storage-classes
+      app.kubernetes.io/managed-by: kustomize
+      cluster.name: prod-cluster
+      environment: production
+
+commonAnnotations:
+  managed-by: gitops
+  environment: production
+  cluster.name: prod-cluster
+  backup.policy: required
+
+patches:
+  - target:
+      kind: StorageClass
+      name: ocs-storagecluster-ceph-rbd
+    patch: |-
+      - op: replace
+        path: /reclaimPolicy
+        value: Retain
+      - op: add
+        path: /metadata/annotations/environment
+        value: production
+  - target:
+      kind: StorageClass
+      name: ocs-storagecluster-ceph-rbd-virtualization
+    patch: |-
+      - op: replace
+        path: /reclaimPolicy
+        value: Retain
+  - target:
+      kind: StorageClass
+      name: ocs-storagecluster-cephfs
+    patch: |-
+      - op: replace
+        path: /reclaimPolicy
+        value: Retain

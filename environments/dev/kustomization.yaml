@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: storage-dev
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: storage-classes
+      app.kubernetes.io/managed-by: kustomize
+      cluster.name: dev-cluster
+      environment: development
+
+commonAnnotations:
+  managed-by: gitops
+  environment: development
+  cluster.name: dev-cluster
+
+patches:
+  - target:
+      kind: StorageClass
+      name: ocs-storagecluster-ceph-rbd
+    patch: |-
+      - op: replace
+        path: /reclaimPolicy
+        value: Delete
+      - op: add
+        path: /metadata/annotations/environment
+        value: development
