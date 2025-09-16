@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: openshift-storage-gitops
-  namespace: argocd
+  namespace: openshift-gitops
   annotations:
     description: "GitOps management for OpenShift Container Storage classes and pools"
 spec:
@@ -22,6 +22,10 @@ spec:
       - CreateNamespace=false
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      - ServerSideApply=true
+    managedNamespaceMetadata:
+      labels:
+        app.kubernetes.io/managed-by: kustomize
   ignoreDifferences:
     - group: storage.k8s.io
       kind: StorageClass
@@ -31,3 +35,4 @@ spec:
         - /reclaimPolicy
         - /volumeBindingMode
         - /allowVolumeExpansion
+        - /spec
