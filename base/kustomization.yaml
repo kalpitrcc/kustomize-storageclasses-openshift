@@ -6,4 +6,4 @@ metadata:
 
 resources:
   - storage-pools.yaml
-  - storage-classes.yaml
+  - storage-classes-metadata-only.yaml

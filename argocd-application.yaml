@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openshift-storage-gitops
+  namespace: argocd
+  annotations:
+    description: "GitOps management for OpenShift Container Storage classes and pools"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kalpitrcc/kustomize-storageclasses-openshift
+    targetRevision: HEAD
+    path: .
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false  # Don't delete storage classes automatically
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+  ignoreDifferences:
+    - group: storage.k8s.io
+      kind: StorageClass
+      jsonPointers:
+        - /parameters
+        - /provisioner
+        - /reclaimPolicy
+        - /volumeBindingMode
+        - /allowVolumeExpansion

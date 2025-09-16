@@ -1,0 +1,56 @@
+# OpenShift Container Storage (OCS) StorageClasses GitOps Metadata Management
+# This configuration only manages metadata (labels/annotations) for existing StorageClasses
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-ceph-rbd
+  annotations:
+    description: "Default Ceph RBD block storage for general workloads"
+    storage.type: "block"
+    backend: "ceph-rbd"
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-ceph-rbd-virtualization
+  annotations:
+    description: "Ceph RBD block storage optimized for virtualization workloads"
+    storage.type: "block"
+    backend: "ceph-rbd"
+    optimized-for: "virtualization"
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-cephfs
+  annotations:
+    description: "CephFS shared filesystem storage for ReadWriteMany access"
+    storage.type: "filesystem"
+    backend: "cephfs"
+    access-modes: "ReadWriteMany"
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ocs-storagecluster-ceph-rgw
+  annotations:
+    description: "Ceph Object Gateway for S3-compatible object storage"
+    storage.type: "object"
+    backend: "ceph-rgw"
+    protocol: "s3"
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openshift-storage.noobaa.io
+  annotations:
+    description: "NooBaa Multi-Cloud Gateway for hybrid cloud object storage"
+    storage.type: "object"
+    backend: "noobaa"
+    protocol: "s3"

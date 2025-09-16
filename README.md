@@ -1,104 +1,86 @@
-# OpenShift Storage Classes and Storage Pools GitOps Management
+# OpenShift Storage Classes GitOps Management
 
-Complete GitOps configuration for managing OpenShift Container Storage (OCS) StorageClasses and underlying storage pools using Kustomize.
+Complete GitOps solution for managing OpenShift Container Storage (OCS) StorageClasses and Ceph storage pools using Kustomize.
 
-> **Complete Solution**: This configuration manages both StorageClasses AND their underlying storage pools (CephBlockPool, CephFilesystem, CephObjectStore) for full GitOps control.
+## 🎯 What This Does
+
+- **GitOps Management**: Manages StorageClasses and Ceph storage pools with proper labels/annotations
+- **Environment-Specific**: Different configurations for dev/prod (reclaim policies, etc.)
+- **Safe Operations**: Only manages metadata, doesn't modify storage functionality
+- **Automation Ready**: Works with ArgoCD, Flux, and other GitOps tools
 
 ## 📁 Repository Structure
 
 ```
-kust-configs/
-├── kustomization.yaml           # Main Kustomize configuration
+├── kustomization.yaml                    # Main configuration
 ├── base/
-│   ├── kustomization.yaml       # Base configuration
-│   ├── storage-pools.yaml       # Ceph storage pools definitions
-│   └── storage-classes.yaml     # StorageClass definitions
+│   ├── kustomization.yaml               # Base resources
+│   ├── storage-pools.yaml               # Ceph pools (CephBlockPool, CephFilesystem, CephObjectStore)
+│   └── storage-classes-metadata-only.yaml # StorageClass metadata only
 ├── environments/
-│   ├── dev/
-│   │   └── kustomization.yaml   # Development environment config
-│   └── prod/
-│       └── kustomization.yaml   # Production environment config
-├── README.md                   # This documentation
-└── .gitignore                 # Git ignore rules
+│   ├── dev/kustomization.yaml           # Dev environment (Delete reclaim policy)
+│   └── prod/kustomization.yaml          # Prod environment (Retain reclaim policy)
+├── deploy.sh                            # Deployment automation script
+├── validate.sh                          # Validation script
+└── argocd-application.yaml              # ArgoCD application example
 ```
-
-## 🎯 What This Does
-
-- **Complete GitOps Management**: Manages both StorageClasses and storage pools
-- **Environment-Specific Configurations**: Different settings for dev/prod
-- **Storage Pool Management**: Defines CephBlockPool, CephFilesystem, CephObjectStore
-- **StorageClass Management**: Complete StorageClass definitions with parameters
-- **Safe Deployment**: Environment-specific reclaim policies and configurations
 
 ## 📋 Prerequisites
 
 1. **OpenShift cluster** with OCS (OpenShift Container Storage) installed
-2. **oc CLI** logged into your cluster
+2. **oc CLI** logged into your cluster with cluster-admin permissions
 3. **kustomize** installed (`brew install kustomize` on macOS)
-4. **Cluster admin permissions** to modify StorageClasses
 
 ## 🚀 Quick Start
 
-### Step 1: Clone and Customize
+### 1. Clone and Setup
 ```bash
-git clone <your-repo-url>
-cd kustomize-storageclasses-openshift
+git clone https://github.com/your-org/openshift-storage-gitops.git
+cd openshift-storage-gitops
 
-
-# Replace placeholder with your actual cluster name
+# Replace placeholder with your cluster name
 sed -i 's/REPLACE_WITH_YOUR_CLUSTER_NAME/my-cluster-name/g' kustomization.yaml
 ```
 
-### Step 2: Preview Changes (Recommended)
+### 2. Deploy Using Scripts (Recommended)
 ```bash
-# See what will be applied
+# Test with dry-run first
+./deploy.sh base true
+
+# Apply the configuration
+./deploy.sh base false
+
+# Validate deployment
+./validate.sh
+```
+
+### 3. Manual Deployment
+```bash
+# Preview changes
 kustomize build . | oc apply --dry-run=client -f -
-```
 
-### Step 3: Apply Configuration
-```bash
-# Apply the GitOps metadata
+# Apply configuration
 kustomize build . | oc apply -f -
+
+# Verify GitOps labels were applied
+oc get storageclass -l app.kubernetes.io/managed-by=kustomize
 ```
 
-### Step 4: Verify
+## 🔧 Environment-Specific Deployments
+
+### Development Environment
 ```bash
-# Check that labels and annotations were added
-oc get storageclass ocs-storagecluster-ceph-rbd -o yaml
+# Deploy to dev (uses Delete reclaim policy)
+./deploy.sh dev false
 ```
 
-## 🔧 Customization for Different Clusters
-
-### Option 1: Direct Edit
-Edit `kustomization.yaml` and change the cluster name:
-```yaml
-labels:
-  - pairs:
-      cluster.name: your-cluster-name  # Change this
-```
-
-### Option 2: Environment-Specific Overlays
-Create cluster-specific directories:
+### Production Environment
 ```bash
-mkdir -p clusters/dev clusters/prod
-
-# Dev cluster
-cat > clusters/dev/kustomization.yaml <<EOF
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ../../
-labels:
-  - pairs:
-      cluster.name: dev-cluster
-      environment: development
-EOF
-
-# Apply dev configuration
-kustomize build clusters/dev/ | oc apply -f -
+# Deploy to prod (uses Retain reclaim policy for data safety)
+./deploy.sh prod false
 ```
 
-## 📊 Storage Classes Managed
+## 📊 Managed Storage Classes
 
 | Storage Class | Type | Description | Use Case |
 |---------------|------|-------------|----------|
@@ -108,6 +90,29 @@ kustomize build clusters/dev/ | oc apply -f -
 | `ocs-storagecluster-ceph-rgw` | Object | S3-compatible object storage | Object storage, backups |
 | `openshift-storage.noobaa.io` | Object | Multi-cloud gateway | Hybrid cloud storage |
 
+## 🤖 Automation Scripts
+
+### Deployment Script (`deploy.sh`)
+```bash
+# Usage: ./deploy.sh <environment> <dry-run>
+./deploy.sh base true     # Dry-run base config
+./deploy.sh base false    # Apply base config
+./deploy.sh dev false     # Apply dev environment
+./deploy.sh prod false    # Apply prod environment
+```
+
+### Validation Script (`validate.sh`)
+```bash
+# Validates deployment and tests storage functionality
+./validate.sh
+```
+
+The validation script checks:
+- OCS installation
+- GitOps-managed storage classes
+- Ceph storage pools
+- Storage functionality with test PVC
+
 ## 🔄 GitOps Integration
 
 ### ArgoCD Application
@@ -115,12 +120,12 @@ kustomize build clusters/dev/ | oc apply -f -
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: storage-classes
+  name: openshift-storage-gitops
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/ocp-storage-gitops
+    repoURL: https://github.com/your-org/openshift-storage-gitops
     targetRevision: HEAD
     path: .
   destination:
@@ -129,6 +134,13 @@ spec:
     automated:
       prune: false  # Don't delete storage classes
       selfHeal: true
+  ignoreDifferences:
+    - group: storage.k8s.io
+      kind: StorageClass
+      jsonPointers:
+        - /parameters
+        - /provisioner
+        - /reclaimPolicy
 ```
 
 ### Flux Kustomization
@@ -141,20 +153,20 @@ metadata:
 spec:
   interval: 10m
   path: ./
-  prune: false  # Don't delete storage classes
+  prune: false
   sourceRef:
     kind: GitRepository
-    name: ocp-storage-config
+    name: openshift-storage-gitops
 ```
 
-## ✅ Validation Commands
+## ✅ Verification Commands
 
 ```bash
-# Check current storage classes
-oc get storageclass
-
-# Verify GitOps labels were applied
+# Check GitOps-managed storage classes
 oc get storageclass -l app.kubernetes.io/managed-by=kustomize
+
+# Check Ceph storage pools
+oc get cephblockpool,cephfilesystem,cephobjectstore -n openshift-storage -l app.kubernetes.io/managed-by=kustomize
 
 # Test storage functionality
 oc apply -f - <<EOF
@@ -170,10 +182,8 @@ spec:
   storageClassName: ocs-storagecluster-ceph-rbd
 EOF
 
-# Check PVC status
+# Check PVC status and cleanup
 oc get pvc test-pvc
-
-# Cleanup test
 oc delete pvc test-pvc
 ```
 
@@ -181,26 +191,23 @@ oc delete pvc test-pvc
 
 ### Common Issues
 
-**1. "StorageClass not found" error**
+**1. "StorageClass not found"**
 ```bash
-# Check if OCS is installed
+# Check OCS installation
 oc get csv -n openshift-storage | grep ocs
-
-# Check storage classes exist
 oc get storageclass
 ```
 
 **2. "Forbidden: updates to parameters are forbidden"**
-- This is expected! The configuration only manages metadata, not parameters
-- If you see this error, it means you're trying to modify storage class parameters
+This is expected! The configuration only manages metadata, not storage parameters.
 
 **3. Permission denied**
 ```bash
-# Ensure you have cluster admin permissions
+# Verify cluster admin permissions
 oc auth can-i update storageclasses
 ```
 
-### Useful Debug Commands
+### Debug Commands
 ```bash
 # Check OCS health
 oc get pods -n openshift-storage
@@ -212,20 +219,31 @@ oc get cephcluster -n openshift-storage
 oc describe storageclass ocs-storagecluster-ceph-rbd
 ```
 
-## 🔒 Security Notes
+## 🔒 Security & Safety
 
-- This configuration requires cluster-admin permissions
-- Only modifies metadata, not storage functionality
-- Safe to apply on production clusters
-- Does not affect existing PVCs or storage behavior
+- **Requires cluster-admin permissions**
+- **Only modifies metadata** (labels/annotations)
+- **Safe for production** - doesn't affect storage functionality
+- **No impact on existing PVCs** or storage behavior
+- **Environment-specific reclaim policies** prevent accidental data loss
+
+## 🚀 Getting Started Checklist
+
+- [ ] Clone the repository
+- [ ] Update cluster name in `kustomization.yaml`
+- [ ] Ensure OCS is installed and working
+- [ ] Test with dry-run: `./deploy.sh base true`
+- [ ] Apply configuration: `./deploy.sh base false`
+- [ ] Validate deployment: `./validate.sh`
+- [ ] Set up GitOps automation (ArgoCD/Flux)
 
 ## 📝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Test changes with `kustomize build . | oc apply --dry-run=client -f -`
+2. Test changes with `./deploy.sh base true`
+3. Validate with `./validate.sh`
 4. Submit a pull request
 
-## 📄 License
+---
 
-This configuration is provided as-is for educational and operational use.
+**Ready to push to GitHub!** This configuration provides a complete, production-ready GitOps solution for OpenShift storage management.
