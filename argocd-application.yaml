@@ -19,7 +19,7 @@ spec:
       prune: false  # Don't delete storage classes automatically
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false
+      - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
       - ServerSideApply=true
