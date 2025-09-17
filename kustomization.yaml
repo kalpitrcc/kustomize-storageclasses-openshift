@@ -9,7 +9,7 @@ resources:
 
 labels:
   - pairs:
-      app.kubernetes.io/name: storage-classes
+      app.kubernetes.io/name: storage-classes1
       app.kubernetes.io/managed-by: kustomize
       cluster.name: REPLACE_WITH_YOUR_CLUSTER_NAME
 
